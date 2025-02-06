@@ -57,36 +57,119 @@ class _NotepadScreenState extends State<NotepadScreen> {
     }
   }
 
-
   // Delete selected files
-  Future<void> _deleteSelectedFiles() async {
+  Future<void> _deleteSelectedFiles(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
 
-    List<String> newFileNames = [];
-    List<String> newFileContents = [];
+    // Show confirmation dialog with a more attractive look
+    bool? confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15), // Rounded corners for a modern look
+          ),
+          title: Text(
+            'Confirm Deletion',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.red, // Color of the title to highlight the action
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to delete the selected files?',
+            style: TextStyle(fontSize: 16, color: Colors.black87),
+          ),
+          actions: <Widget>[
+            // Cancel button with modern design
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false); // User pressed cancel
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.grey.shade200, // Light grey background for cancel
+                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cancel, color: Colors.red), // Cancel icon
+                  SizedBox(width: 8),
+                  Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Delete button with attractive red color
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true); // User confirmed deletion
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.red, // Red background for delete button
+                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.delete, color: Colors.white), // Delete icon
+                  SizedBox(width: 8),
+                  Text(
+                    'Delete',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white, // White text on delete button
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
 
-    setState(() {
-      for (int i = 0; i < _fileNames.length; i++) {
-        if (!_selectedFiles[i]) {
-          newFileNames.add(_fileNames[i]);
-          newFileContents.add(_noteControllers[i].text);
+    // If the user confirmed the deletion
+    if (confirmDelete == true) {
+      List<String> newFileNames = [];
+      List<String> newFileContents = [];
+
+      setState(() {
+        for (int i = 0; i < _fileNames.length; i++) {
+          if (!_selectedFiles[i]) {
+            newFileNames.add(_fileNames[i]);
+            newFileContents.add(_noteControllers[i].text);
+          }
         }
-      }
 
-      _fileNames = List.from(newFileNames);
-      _noteControllers = newFileContents
-          .map((content) => TextEditingController(text: content))
-          .toList();
-      _focusNodes = List.generate(_fileNames.length, (_) => FocusNode());
-      _selectedFiles = List.generate(_fileNames.length, (_) => false);
+        _fileNames = List.from(newFileNames);
+        _noteControllers = newFileContents
+            .map((content) => TextEditingController(text: content))
+            .toList();
+        _focusNodes = List.generate(_fileNames.length, (_) => FocusNode());
+        _selectedFiles = List.generate(_fileNames.length, (_) => false);
 
-      _isInSelectionMode = false;
-    });
+        _isInSelectionMode = false;
+      });
 
-    // अपडेटेड डेटा को SharedPreferences में सेव करें
-    await prefs.setStringList('fileNames', newFileNames);
-    await prefs.setStringList('fileContents', newFileContents);
+      // Save updated data to SharedPreferences
+      await prefs.setStringList('fileNames', newFileNames);
+      await prefs.setStringList('fileContents', newFileContents);
+    }
   }
+
 
   Future<void> _showCreateFileDialog() async {
     TextEditingController _fileNameController = TextEditingController();
@@ -95,11 +178,13 @@ class _NotepadScreenState extends State<NotepadScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return StatefulBuilder( // Use StatefulBuilder to allow for state changes inside the dialog
+        return StatefulBuilder(
+          // Use StatefulBuilder to allow for state changes inside the dialog
           builder: (BuildContext context, setState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15), // Rounded corners for the dialog
+                borderRadius:
+                    BorderRadius.circular(15), // Rounded corners for the dialog
               ),
               elevation: 10, // Add shadow for better depth
               title: Text(
@@ -107,104 +192,111 @@ class _NotepadScreenState extends State<NotepadScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent, // Better title styling
+                  color: Colors.black, // Better title styling
                 ),
               ),
-              content: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min, // Make sure content adjusts to fit
-                  children: [
-                    TextField(
-                      controller: _fileNameController,
-                      decoration: InputDecoration(
-                        hintText: "Enter new file name",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12), // Rounded corners
-                          borderSide: BorderSide(color: Colors.blueAccent), // Border color
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.blueAccent),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+              content: Column(
+                mainAxisSize:
+                    MainAxisSize.min, // Make sure content adjusts to fit
+                children: [
+                  TextField(
+                    controller: _fileNameController,
+                    decoration: InputDecoration(
+                      hintText: "Create a new file",
+                      border: OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius.circular(12), // Rounded corners
+                        borderSide: BorderSide(
+                            color: Colors.orangeAccent), // Border color
                       ),
-                      autofocus: true, // Autofocus for quick typing
-                      maxLength: 10, // Limit the file name to 20 characters
-                      // maxLengthEnforced: true, // Enforce the maximum length
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.orange),
+                      ),
+                      contentPadding:
+                          EdgeInsets.symmetric(vertical: 15, horizontal: 10),
                     ),
-                    SizedBox(height: 10), // Add spacing between TextField and error message
+                    autofocus: true, // Autofocus for quick typing
+                    maxLength: 10, // Limit the file name to 20 characters
+                    // maxLengthEnforced: true, // Enforce the maximum length
+                  ),
+                  SizedBox(
+                      height:
+                          10), // Add spacing between TextField and error message
 
-                    // Show error message if present
-                    if (_errorMessage.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0), // Space between error and button
-                        child: Text(
-                          _errorMessage,
-                          style: TextStyle(
-                            color: Colors.redAccent,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  // Show error message if present
+                  if (_errorMessage.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          bottom: 10.0), // Space between error and button
+                      child: Text(
+                        _errorMessage,
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
               actions: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12), // Rounded button
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12), // Button padding
+                TextButton(
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12), // Rounded button
                     ),
-                    onPressed: () {
-                      String newFileName = _fileNameController.text.trim();
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12), // Button padding
+                  ),
+                  onPressed: () {
+                    String newFileName = _fileNameController.text.trim();
 
-                      // Check if file name is empty
-                      if (newFileName.isEmpty) {
-                        setState(() {
-                          _errorMessage = "File name cannot be empty!"; // Set error message
-                        });
-                        return;
-                      }
-
-                      // Convert file names to lowercase for case-insensitive comparison
-                      bool fileExists = _fileNames.any(
-                              (file) => file.toLowerCase() == newFileName.toLowerCase());
-
-                      if (fileExists) {
-                        setState(() {
-                          _errorMessage = "A file with this name already exists!"; // Set error message
-                        });
-                        return;
-                      }
-
+                    // Check if file name is empty
+                    if (newFileName.isEmpty) {
                       setState(() {
-                        _errorMessage = ''; // Clear error message if no error
-                        _fileNames.insert(0, newFileName);
-                        TextEditingController newController = TextEditingController();
-                        newController.addListener(() {
-                          setState(() {});
-                        });
+                        _errorMessage =
+                            "File name cannot be empty!"; // Set error message
+                      });
+                      return;
+                    }
 
-                        _noteControllers.insert(0, newController);
-                        _focusNodes.insert(0, FocusNode());
-                        _selectedFiles.insert(0, false);
+                    // Convert file names to lowercase for case-insensitive comparison
+                    bool fileExists = _fileNames.any((file) =>
+                        file.toLowerCase() == newFileName.toLowerCase());
+
+                    if (fileExists) {
+                      setState(() {
+                        _errorMessage =
+                            "A file with this name already exists!"; // Set error message
+                      });
+                      return;
+                    }
+
+                    setState(() {
+                      _errorMessage = ''; // Clear error message if no error
+                      _fileNames.insert(0, newFileName);
+                      TextEditingController newController =
+                          TextEditingController();
+                      newController.addListener(() {
+                        setState(() {});
                       });
 
-                      _filterFiles(_searchController.text); // Re-filter after adding a new file
-                      _saveAllNotes();
-                      Navigator.of(context).pop();
-                    },
-                    child: Text(
-                      'Create',
-                      style: TextStyle(color: Colors.white, fontSize: 16), // Button text style
-                    ),
+                      _noteControllers.insert(0, newController);
+                      _focusNodes.insert(0, FocusNode());
+                      _selectedFiles.insert(0, false);
+                    });
+
+                    _filterFiles(_searchController
+                        .text); // Re-filter after adding a new file
+                    _saveAllNotes();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    'Create',
+                    style: TextStyle(
+                        color: Colors.white, fontSize: 16), // Button text style
                   ),
                 ),
               ],
@@ -236,41 +328,137 @@ class _NotepadScreenState extends State<NotepadScreen> {
   // Show dialog to edit file name
   void _showEditFileNameDialog(int index) {
     TextEditingController _fileNameController =
-        TextEditingController(text: _fileNames[index]);
+    TextEditingController(text: _fileNames[index]);
+
+    // FocusNode to handle the cursor placement
+    FocusNode _focusNode = FocusNode();
+
+    String _errorMessage = ''; // Variable to store error message
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Edit File Name"),
-          content: TextField(
-            controller: _fileNameController,
-            decoration: InputDecoration(hintText: "Edit file name"),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _fileNames[index] = _fileNameController.text;
-                });
+        return StatefulBuilder(
+          // Use StatefulBuilder to allow for state changes inside the dialog
+          builder: (BuildContext context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15), // Rounded corners
+              ),
+              backgroundColor: Colors.white, // Dialog background color
+              title: Text(
+                "Edit File Name",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _fileNameController,
+                      focusNode: _focusNode, // Set the focus node here
+                      decoration: InputDecoration(
+                        hintText: "Enter new file name",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.orangeAccent),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.orange),
+                        ),
+                        contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                      ),
+                      autofocus: true, // Automatically focus when the dialog appears
+                    ),
+                    SizedBox(height: 10),
+                    // Show error message if present
+                    if (_errorMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Text(
+                          _errorMessage,
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    String newFileName = _fileNameController.text.trim();
 
-                _filterFiles(_searchController
-                    .text); // Re-filter after editing the file name
-                _saveAllNotes();
-                Navigator.of(context).pop();
-              },
-              child: Text('Save'),
-            ),
-          ],
+                    // Check if the file name is empty
+                    if (newFileName.isEmpty) {
+                      setState(() {
+                        _errorMessage = "File name cannot be empty.";
+                      });
+                      return;
+                    }
+
+                    // Check if the file name already exists
+                    bool fileExists = _fileNames.any((file) =>
+                    file.toLowerCase() == newFileName.toLowerCase() &&
+                        file != _fileNames[index]);
+
+                    if (fileExists) {
+                      setState(() {
+                        _errorMessage = "A file with this name already exists.";
+                      });
+                      return;
+                    }
+
+                    // If no error, update the file name
+                    setState(() {
+                      _fileNames[index] = newFileName;
+                      _errorMessage = ''; // Clear error message
+                    });
+
+                    _filterFiles(_searchController.text); // Re-filter after editing the file name
+                    _saveAllNotes();
+                    Navigator.of(context).pop();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange, // Button color
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Save',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
-    );
+    ).then((_) {
+      // Set the cursor in the text field after the dialog is shown
+      Future.delayed(Duration(milliseconds: 100), () {
+        _focusNode.requestFocus();
+      });
+    });
   }
+
 
   void _openFileDetails(int index) {
     print("Opening file at index: $index");
     print("Filtered file names: $_filteredFileNames");
-    print("Filtered note controllers length: ${_filteredNoteControllers.length}");
+    print(
+        "Filtered note controllers length: ${_filteredNoteControllers.length}");
 
     if (index < 0 || index >= _filteredFileNames.length) {
       print("Error: Invalid index $index!");
@@ -294,8 +482,6 @@ class _NotepadScreenState extends State<NotepadScreen> {
       });
     });
   }
-
-
 
   void _filterFiles(String query) {
     setState(() {
@@ -368,20 +554,20 @@ class _NotepadScreenState extends State<NotepadScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.white60,
         elevation: 4,
-        shadowColor: Colors.black26,
+        shadowColor: Colors.white60,
         title: Text(
-          "Notepad",
+          "My notes",
           style: TextStyle(
-            color: Colors.black,
+            color:  (Colors.black),
             fontWeight: FontWeight.bold,
             fontSize: 22,
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.search, color: Colors.blueAccent, size: 28),
+            icon: Icon(Icons.search, color: Colors.black45, size: 28),
             onPressed: () async {
               final selectedFile = await Navigator.push(
                 context,
@@ -403,7 +589,7 @@ class _NotepadScreenState extends State<NotepadScreen> {
           IconButton(
             icon: Icon(
               _isGridView ? Icons.view_list : Icons.grid_view,
-              color: Colors.blueAccent,
+              color: Colors.orange,
               size: 28,
             ),
             onPressed: _toggleView,
@@ -418,9 +604,12 @@ class _NotepadScreenState extends State<NotepadScreen> {
           if (_isInSelectionMode)
             IconButton(
               icon: Icon(Icons.delete, color: Colors.redAccent, size: 28),
-              onPressed: _deleteSelectedFiles,
+              onPressed: () async {
+                await _deleteSelectedFiles(context); // Pass the context here
+              },
               tooltip: 'Delete Selected Files',
             ),
+
           SizedBox(width: 10), // Extra spacing for better UI
         ],
       ),
@@ -434,14 +623,17 @@ class _NotepadScreenState extends State<NotepadScreen> {
             });
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: _isGridView ? _buildGridView() : _buildListView(),
+        child: Container(
+          decoration: BoxDecoration(color: Colors.white60),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _fileNames.isEmpty ? _buildEmptyState() : (_isGridView ? _buildGridView() : _buildListView()),
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateFileDialog,
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.orange,
         elevation: 10,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
@@ -466,19 +658,19 @@ class _NotepadScreenState extends State<NotepadScreen> {
   // Build ListView
   Widget _buildListView() {
     List<int> sortedIndexes =
-    List.generate(_fileNames.length, (index) => index);
+        List.generate(_fileNames.length, (index) => index);
 
     return ListView.builder(
       itemCount: sortedIndexes.length,
       itemBuilder: (context, index) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 11.0), // Increase bottom padding
+          padding:
+              const EdgeInsets.only(bottom: 11.0), // Increase bottom padding
           child: _buildFileItem(sortedIndexes[index]),
         );
       },
     );
   }
-
 
   // Build GridView
   Widget _buildGridView() {
@@ -499,6 +691,28 @@ class _NotepadScreenState extends State<NotepadScreen> {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.note_add, size: 80, color: Colors.grey),
+          SizedBox(height: 20),
+          Text(
+            "No files found.",
+            style: TextStyle(fontSize: 24, color: Colors.grey),
+          ),
+          SizedBox(height: 10),
+          Text(
+            "Tap the '+' button to create a new file.",
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
   // Build each file item in the list/grid
   Widget _buildFileItem(int index) {
     return GestureDetector(
@@ -510,12 +724,12 @@ class _NotepadScreenState extends State<NotepadScreen> {
       },
       onTap: () {
         if (_isInSelectionMode) {
-          _toggleSelection(index); // Allow single tap selection after long press
+          _toggleSelection(
+              index); // Allow single tap selection after long press
         } else {
           _openFileDetails(index); // Open file if not in selection mode
         }
       },
-
       child: AnimatedContainer(
         duration: Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -541,7 +755,7 @@ class _NotepadScreenState extends State<NotepadScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.description, color: Colors.blueAccent),
+                  Icon(Icons.description, color: Color(0xFFFFA500)),
                   SizedBox(width: 5),
                   Expanded(
                     child: Text(
@@ -554,26 +768,13 @@ class _NotepadScreenState extends State<NotepadScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'Edit') {
-                        _showEditFileNameDialog(index);
-                      }
+                  IconButton(
+                    icon: Icon(Icons.edit, color: Colors.orange, size: 19),
+                    onPressed: () {
+                      _showEditFileNameDialog(index); // Trigger the same function when this button is pressed
                     },
-                    itemBuilder: (BuildContext context) => [
-                      PopupMenuItem(
-                        value: 'Edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, color: Colors.blue),
-                            SizedBox(width: 10),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    child: Icon(Icons.more_vert, color: Colors.grey.shade700),
-                  ),
+                  )
+
                 ],
               ),
               Container(
@@ -587,9 +788,9 @@ class _NotepadScreenState extends State<NotepadScreen> {
                   constraints: BoxConstraints(maxWidth: 11 * 8.0),
                   child: Text(
                     index < _filteredNoteControllers.length &&
-                        _filteredNoteControllers[index].text.isNotEmpty
+                            _filteredNoteControllers[index].text.isNotEmpty
                         ? _filteredNoteControllers[index].text
-                        : 'Add content...',
+                        : 'Add title...',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -606,7 +807,6 @@ class _NotepadScreenState extends State<NotepadScreen> {
       ),
     );
   }
-
 }
 
 class SearchScreen extends StatefulWidget {
@@ -623,12 +823,18 @@ class _SearchScreenState extends State<SearchScreen> {
   TextEditingController _searchController = TextEditingController();
   List<String> _filteredFileNames = [];
   List<TextEditingController> _filteredNoteControllers = [];
+  FocusNode _searchFocusNode = FocusNode(); // FocusNode
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(() {
       _filterFiles(_searchController.text);
+    });
+
+    // Automatically focus on the search field when the screen is loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).requestFocus(_searchFocusNode);
     });
   }
 
@@ -656,6 +862,8 @@ class _SearchScreenState extends State<SearchScreen> {
       appBar: AppBar(
         backgroundColor: Colors.blueAccent,
         elevation: 6,
+        leading: IconButton(onPressed: (){Navigator.pop(context);},
+    icon: Icon(Icons.arrow_back_ios_new_outlined,),),
         title: Container(
           padding: EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
@@ -671,6 +879,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           child: TextField(
             controller: _searchController,
+            focusNode: _searchFocusNode, // Set the focus node here
             decoration: InputDecoration(
               hintText: "Search files...",
               hintStyle: TextStyle(color: Colors.grey[500]),
@@ -719,7 +928,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.description, color: Colors.blueAccent),
+                        Icon(Icons.description, color: Colors.orange),
                         SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -739,14 +948,15 @@ class _SearchScreenState extends State<SearchScreen> {
                                     ? _filteredNoteControllers[index]
                                         .text
                                         .split("\n")
-                                        .take(2)
+                                        .take(1)
                                         .join("\n")
-                                    : "No content...",
-                                maxLines: 2,
+                                    : "Add title...",
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
+                                  fontWeight: FontWeight.w500,
                                   fontSize: 16,
-                                  color: Colors.grey[600],
+                                  color: Colors.grey.shade800,
                                 ),
                               ),
                             ],
@@ -775,17 +985,18 @@ class FileDetailScreen extends StatefulWidget {
 }
 
 class _FileDetailScreenState extends State<FileDetailScreen> {
-  // List to store controllers for each new file's content
   List<TextEditingController> newFileControllers = [];
-  List<String> fileNames = []; // List to store new file names
+  List<String> fileNames = [];
+  List<FocusNode> focusNodes = [];
+  List<bool> _selectedFiles = []; // To track the selection of files
+  bool _isInSelectionMode = false; // Flag to track if we are in selection mode
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadData(); // Call this in didChangeDependencies to reload data when screen is revisited
+    _loadData();
   }
 
-  // Load data from SharedPreferences when the screen is opened
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -795,256 +1006,657 @@ class _FileDetailScreenState extends State<FileDetailScreen> {
       widget.noteController.text = savedNote;
     }
 
-    // Load additional files (if any) specific to this file
+    // Load additional files
     fileNames = prefs.getStringList('fileNames_${widget.fileName}') ?? [];
-    newFileControllers.clear(); // Clear the old list to prevent duplicates
+    _selectedFiles = List.generate(
+        fileNames.length, (_) => false); // Initialize selection list
+    newFileControllers.clear();
+    focusNodes.clear(); // Clear focus nodes
     for (String fileName in fileNames) {
       String? fileContent = prefs.getString(fileName);
       if (fileContent != null) {
         TextEditingController newFileController =
             TextEditingController(text: fileContent);
         newFileControllers.add(newFileController);
+
+        FocusNode newFocusNode = FocusNode();
+        focusNodes.add(newFocusNode); // Add a FocusNode for the new file
       }
     }
 
-    setState(() {}); // Trigger a rebuild after loading data
+    setState(() {});
   }
 
-  // Save data to SharedPreferences when text changes
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // Save the original note
     prefs.setString(widget.fileName, widget.noteController.text);
 
-    // Save new files
     for (int i = 0; i < newFileControllers.length; i++) {
       prefs.setString(fileNames[i], newFileControllers[i].text);
     }
 
-    // Save file names list specific to this file context
     prefs.setStringList('fileNames_${widget.fileName}', fileNames);
   }
 
-  // Show create file dialog and save new file
-  Future<void> _showCreateFileDialog() async {
-    TextEditingController _fileNameController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Enter File Name"),
-          content: TextField(
-            controller: _fileNameController,
-            decoration: InputDecoration(hintText: "Enter new file name"),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  String newFileName = _fileNameController.text.trim();
-                  if (newFileName.isNotEmpty) {
-                    // Add the new file name to the list specific to this file
-                    fileNames.add(newFileName);
-
-                    // Create a new controller for the new file's content
-                    TextEditingController newFileController =
-                        TextEditingController();
-                    newFileControllers.add(newFileController);
-                  }
-                });
-
-                // Save all data to SharedPreferences, specific to this file
-                _saveData();
-
-                Navigator.of(context).pop();
-              },
-              child: Text('Create'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Delete file method
-  Future<void> _deleteFile(int index) async {
+  Future<void> _deleteSelectedFiles(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Remove file from SharedPreferences
-    await prefs.remove(fileNames[index]);
-
-    // Remove the file from the list and controller
-    setState(() {
-      fileNames.removeAt(index);
-      newFileControllers.removeAt(index);
-    });
-
-    // Update file names list in SharedPreferences
-    await prefs.setStringList('fileNames_${widget.fileName}', fileNames);
-  }
-
-  // Show delete confirmation dialog
-  void _showDeleteConfirmationDialog(int index) {
-    showDialog(
+    // Show confirmation dialog with a more attractive look
+    bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Delete File"),
-          content:
-              Text("Are you sure you want to delete '${fileNames[index]}'?"),
-          actions: <Widget>[
-            TextButton(
-              child: Text("Cancel"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20), // Rounded corners for a modern look
+          ),
+          title: Text(
+            'Confirm Deletion',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.redAccent, // Color of the title to highlight the action
             ),
-            TextButton(
-              child: Text("Delete", style: TextStyle(color: Colors.red)),
-              onPressed: () {
-                _deleteFile(index); // Call delete function
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Edit file name method
-  Future<void> _editFileName(int index) async {
-    TextEditingController _fileNameController =
-        TextEditingController(text: fileNames[index]);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Edit File Name"),
-          content: TextField(
-            controller: _fileNameController,
-            decoration: InputDecoration(hintText: "Enter new file name"),
+          ),
+          content: Text(
+            'Are you sure you want to delete the selected files?',
+            style: TextStyle(fontSize: 16, color: Colors.black87),
           ),
           actions: <Widget>[
+            // Cancel button with modern design
             TextButton(
               onPressed: () {
-                setState(() {
-                  String newFileName = _fileNameController.text.trim();
-                  if (newFileName.isNotEmpty) {
-                    // Update the file name in the list
-                    fileNames[index] = newFileName;
-                  }
-                });
-
-                // Save updated data to SharedPreferences
-                _saveData();
-
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(false); // User pressed cancel
               },
-              child: Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Build file item with delete and edit options
-  Widget _buildFileItem(int index) {
-    return GestureDetector(
-      onLongPress: () {
-        _showDeleteConfirmationDialog(
-            index); // Long press for delete confirmation
-      },
-      child: Card(
-        elevation: 3,
-        margin: EdgeInsets.symmetric(vertical: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.grey.shade300, // Light grey background for cancel
+                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  Icon(Icons.cancel, color: Colors.redAccent), // Cancel icon
+                  SizedBox(width: 8),
                   Text(
-                    fileNames[index],
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.edit,
-                            color: Colors.orange), // Edit button
-                        onPressed: () {
-                          _editFileName(index); // Show dialog to edit file name
-                        },
-                      ),
-                    ],
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.redAccent,
+                    ),
                   ),
                 ],
               ),
-              TextField(
-                controller: newFileControllers[index],
-                maxLines: null,
-                keyboardType: TextInputType.multiline,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter content...',
+            ),
+            // Delete button with attractive red color
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true); // User confirmed deletion
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.redAccent, // Red background for delete button
+                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                onChanged: (text) {
-                  _saveData();
-                },
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.delete, color: Colors.white), // Delete icon
+                  SizedBox(width: 8),
+                  Text(
+                    'Delete',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white, // White text on delete button
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If the user confirmed the deletion
+    if (confirmDelete == true) {
+      List<String> newFileNames = [];
+      List<String> newFileContents = [];
+
+      setState(() {
+        for (int i = 0; i < _selectedFiles.length; i++) {
+          if (!_selectedFiles[i]) {
+            newFileNames.add(fileNames[i]);
+            newFileContents.add(newFileControllers[i].text);
+          }
+        }
+
+        fileNames = List.from(newFileNames);
+        newFileControllers = newFileContents
+            .map((content) => TextEditingController(text: content))
+            .toList();
+        focusNodes = List.generate(fileNames.length, (_) => FocusNode());
+        _selectedFiles = List.generate(fileNames.length, (_) => false);
+        _isInSelectionMode = false;
+      });
+
+      // Update the data in SharedPreferences
+      await prefs.setStringList('fileNames_${widget.fileName}', fileNames);
+      for (int i = 0; i < newFileControllers.length; i++) {
+        await prefs.setString(fileNames[i], newFileControllers[i].text);
+      }
+    }
+  }
+
+
+  void _selectAllFiles() {
+    setState(() {
+      // Select all files
+      for (int i = 0; i < _selectedFiles.length; i++) {
+        _selectedFiles[i] = true;
+      }
+    });
+  }
+
+  void _deselectAllFiles() {
+    setState(() {
+      // Deselect all files and disable selection mode
+      for (int i = 0; i < _selectedFiles.length; i++) {
+        _selectedFiles[i] = false;
+      }
+      _isInSelectionMode = false; // Disable selection mode
+    });
+  }
+
+  Future<void> _showCreateFileDialog() async {
+    TextEditingController _fileNameController = TextEditingController();
+    String _errorMessage = '';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              elevation: 10,
+              title: Text(
+                "Enter File Name",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _fileNameController,
+                    decoration: InputDecoration(
+                      hintText: "Create a new file",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12), // Rounded corners
+                        borderSide: BorderSide(color: Colors.blue), // Border color
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.blueAccent),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                    ),
+                    autofocus: true,
+                    maxLength: 10,
+                  ),
+                  SizedBox(height: 10),
+                  if (_errorMessage.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10.0),
+                      child: Text(
+                        _errorMessage,
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12), // Rounded button
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12), // Button padding
+                  ),
+                  onPressed: () {
+                    String newFileName = _fileNameController.text.trim();
+
+                    if (newFileName.isEmpty) {
+                      setState(() {
+                        _errorMessage = "File name cannot be empty!";
+                      });
+                      return;
+                    }
+
+                    bool fileExists = fileNames.any((file) =>
+                    file.toLowerCase() == newFileName.toLowerCase());
+
+                    if (fileExists) {
+                      setState(() {
+                        _errorMessage = "A file with this name already exists!";
+                      });
+                      return;
+                    }
+
+                    setState(() {
+                      _errorMessage = '';
+                      fileNames.insert(0, newFileName);
+                      TextEditingController newController = TextEditingController();
+                      newFileControllers.insert(0, newController);
+                      FocusNode newFocusNode = FocusNode();
+                      focusNodes.insert(0, newFocusNode);
+                      _selectedFiles.insert(0, false); // Initialize selection state
+                    });
+
+                    // Save data and reload to reflect changes
+                    _saveData();
+                    _loadData(); // Reload data to ensure the UI is updated
+
+                    // Ensure focus is requested only after the widget is stable
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      // Check if the widget is still mounted (active)
+                      if (mounted) {
+                        // Ensure that the context is valid before calling requestFocus
+                        if (focusNodes.isNotEmpty) {
+                          FocusScope.of(context).requestFocus(focusNodes[0]);
+                        }
+                      }
+                    });
+
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    'Create',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  Future<void> _editFileName(int index) async {
+    TextEditingController _fileNameController =
+    TextEditingController(text: fileNames[index]);
+    String _errorMessage = '';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              backgroundColor: Colors.white,
+              title: Text(
+                "Edit File Name",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              content: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _fileNameController,
+                      autofocus: true, // Automatically shows cursor
+                      decoration: InputDecoration(
+                        hintText: "Enter new file name",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.orangeAccent),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.blueAccent),
+                        ),
+                        contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    if (_errorMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Text(
+                          _errorMessage,
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    String newFileName = _fileNameController.text.trim();
+
+                    // Check if the file name is empty
+                    if (newFileName.isEmpty) {
+                      setState(() {
+                        _errorMessage = "File name cannot be empty!";
+                      });
+                      return;
+                    }
+
+                    // Check if the file name already exists
+                    bool fileExists = fileNames.any((file) =>
+                    file.toLowerCase() == newFileName.toLowerCase() &&
+                        file != fileNames[index]);
+
+                    if (fileExists) {
+                      setState(() {
+                        _errorMessage = "A file with this name already exists!";
+                      });
+                      return;
+                    }
+
+                    // If no error, update the file name
+                    setState(() {
+                      _errorMessage = ''; // Clear error message
+                      fileNames[index] = newFileName;
+                    });
+
+                    _saveData();
+                    Navigator.of(context).pop();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Save',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFileItem(int index) {
+    return GestureDetector(
+      onLongPress: () {
+        // Sirf tabhi chale jab selection mode inactive ho
+        if (!_isInSelectionMode) {
+          setState(() {
+            _isInSelectionMode = true; // Selection mode enable
+            _selectedFiles[index] = true; // Pehli file automatically select
+          });
+        }
+      },
+      onTap: () {
+        // Sirf tabhi chale jab selection mode active ho
+        if (_isInSelectionMode) {
+          setState(() {
+            _selectedFiles[index] = !_selectedFiles[index]; // Toggle selection
+
+            // Agar sari files unselect ho gayi, to selection mode off karna hai
+            bool anyFileSelected = _selectedFiles.contains(true);
+            if (!anyFileSelected) {
+              _isInSelectionMode = false; // Selection mode disable
+            }
+          });
+        }
+      },
+
+      child: Column(
+        children: [
+          SizedBox(height: 11,),
+          AnimatedContainer(
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            padding: EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              color: _selectedFiles[index] ? Colors.blue.shade50 : Colors.white,
+              border: Border.all(
+                color: _selectedFiles[index] ? Colors.blue : Colors.grey.shade300,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 8,
+                  offset: Offset(2, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+               Row(
+                 mainAxisAlignment: MainAxisAlignment.end,
+                 children: [
+                   Icon(Icons.description, color: Colors.blue),
+                   SizedBox(width: 7,),
+                   Expanded(
+                     child:
+                         Text(
+                           fileNames[index],
+                           style: TextStyle(
+                             fontWeight: FontWeight.bold,
+                             fontSize: 20,
+                             color: Colors.black87,
+                           ),
+                           overflow: TextOverflow.ellipsis,
+                         ),
+
+
+                   ),
+                   IconButton(
+                       icon: Icon(Icons.edit, color: Colors.blue, size: 19),
+                       onPressed: () {
+                         _editFileName(index);
+                       },
+                     ),
+                 ],
+               ),
+
+                SizedBox(height: 6),
+                TextField(
+                  controller: newFileControllers[index],
+                  focusNode: focusNodes[index], // Set the FocusNode here
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'Write your notes...',
+                    hintStyle: TextStyle(color: Colors.black54),
+                  ),
+                  onChanged: (text) {
+                    _saveData();
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-            widget.fileName), // Display the original file name in the AppBar
-      ),
-      body: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // The original file's note (TextField for the initial file)
-                TextField(
-                  controller: widget.noteController,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  decoration: InputDecoration(
-                    labelText: 'Edit your note',
-                    border: OutlineInputBorder(),
-                  ),
-                  onChanged: (text) {
-                    _saveData();
-                  },
+    return GestureDetector(
+      onTap: () {
+        if (_isInSelectionMode) {
+          setState(() {
+            _isInSelectionMode = false;
+            _selectedFiles =
+                List.generate(fileNames.length, (_) => false); // Deselect all
+          });
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white60,
+          elevation: 4,
+          shadowColor: Colors.white60,
+          title: Row(
+            children: [
+              Icon(Icons.description, color: Color(0xFFFFA500)),
+              SizedBox(width: 11,),
+              Text(
+                widget.fileName,
+                style: TextStyle(
+                  color: Colors.black, // Title color
+                  fontWeight: FontWeight.bold, // Bold font
+                  fontSize: 22, // Increased font size
                 ),
-                // Dynamically created new file content TextFields below the original one
-                ...List.generate(fileNames.length, (index) {
-                  return _buildFileItem(index); // Use the method for each file
-                }),
+              ),
+
+            ],
+          ),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new_outlined,
+                color: Colors.black), // Back button color
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          actions: [
+            // Select/Deselect All button - toggles between selecting and deselecting all files
+            if (_isInSelectionMode)
+              IconButton(
+                icon: Icon(
+                  _selectedFiles.every((selected) => selected) // Check if all are selected
+                      ? Icons.select_all // Show Deselect All when all files are selected
+                      : Icons.select_all, // Show Select All when not all files are selected
+                  color: Colors.orange,
+                  size: 28,
+                ),
+                onPressed: () {
+                  if (_selectedFiles.every((selected) => selected)) {
+                    _deselectAllFiles(); // Unselect all files
+                  } else {
+                    _selectAllFiles(); // Select all files
+                  }
+                },
+                tooltip: _selectedFiles.every((selected) => selected)
+                    ? 'Deselect All' // Tooltip when all files are selected
+                    : 'Select All', // Tooltip when not all files are selected
+              ),
+            // Delete button - only shows if some files are selected
+            if (_isInSelectionMode && _selectedFiles.any((selected) => selected))
+              IconButton(
+                icon: Icon(Icons.delete, color: Colors.redAccent, size: 28),
+                onPressed: () async {
+                  await _deleteSelectedFiles(context); // Pass context to the method
+                },
+                tooltip: 'Delete Selected Files',
+              ),
+
+            SizedBox(width: 10), // Extra spacing for better UI
+          ],
+
+        ),
+        body: Stack(
+          children: [
+            // GestureDetector for empty space
+            GestureDetector(
+              behavior: HitTestBehavior
+                  .translucent, // Only detects taps on empty areas
+              onTap: () {
+                widget.noteController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: widget.noteController.text.length),
+                );
+                FocusScope.of(context)
+                    .requestFocus(FocusNode()); // Move cursor to TextField
+              },
+              child: Container(), // Ensures GestureDetector covers the background
+            ),
+
+            // Main ListView Content
+            ListView(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: widget.noteController,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                        decoration: InputDecoration(
+                          labelText: 'Title...',
+                          labelStyle: TextStyle(color: Colors.blue,),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),  // Smooth rounded corners
+                            borderSide: BorderSide(color: Colors.orange, width: 2), // Stylish orange border
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.blue, width: 2), // Black border when focused
+                          ),
+                          filled: true,
+                          fillColor: Colors.white10 // Subtle background color
+                        ),
+                        style: TextStyle(fontSize: 18, color: Colors.black87), // Elegant text style
+                        onChanged: (text) {
+                          _saveData();
+                        },
+                      ),
+
+                      ...List.generate(fileNames.length, (index) {
+                        return _buildFileItem(
+                            index); // Long press functionality will remain unchanged
+                      }),
+                    ],
+                  ),
+                ),
               ],
             ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _showCreateFileDialog,
+          backgroundColor: Colors.blue,
+          elevation: 10,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateFileDialog,
-        child: Icon(Icons.add),
-        backgroundColor: Colors.blue,
+          child: Icon(
+            Icons.add,
+            size: 30,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
